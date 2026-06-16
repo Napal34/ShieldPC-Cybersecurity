@@ -1,115 +1,50 @@
-import os
-import sys
-import time
-import psutil
-import threading
-import socket
-import json
-import struct
-from datetime import datetime
+<img width="1892" height="789" alt="image" src="https://github.com/user-attachments/assets/53fb6b24-1f61-4b58-b918-d1251fd412f8" /># 🛡️ Laboratorio de SecOps: Monitoreo de Integridad de Archivos (FIM) con Zabbix y Docker
 
-# ==========================================
-# CONFIGURACIÓN DE TU ZABBIX LOCAL
-# ==========================================
-ZABBIX_SERVER = "127.0.0.1"  
-ZABBIX_PORT = 10051
-ZABBIX_HOST = "CyberShield-HIDS"  # Coincide con el Host que creamos en tu Zabbix
-HOSTS_PATH = "/etc/hosts"
+## 📌 Descripción del Proyecto
+Este proyecto de portafolio demuestra la implementación práctica de un sistema **FIM (File Integrity Monitoring)** en un entorno de microservicios contenerizados. El objetivo principal es la auditoría automatizada y la detección temprana de intrusiones en archivos críticos de configuración del sistema operativo Linux (`/etc/passwd`).
 
-def enviar_a_zabbix(key, valor):
-    """Envía la alerta al puerto 10051 de Zabbix usando sockets puros"""
-    try:
-        datos = {
-            "request": "sender data",
-            "data": [
-                {
-                    "host": ZABBIX_HOST,
-                    "key": key,
-                    "value": valor
-                }
-            ]
-        }
-        json_payload = json.dumps(datos).encode('utf-8')
-        
-        # Construcción del Header obligatorio de Zabbix (ZBXD\x01 + longitud en 64-bit)
-        header = b'ZBXD\x01' + struct.pack('<Q', len(json_payload))
-        packet = header + json_payload
+El laboratorio simula un entorno real de operaciones de seguridad (**SecOps**), donde cualquier alteración no autorizada en la base de datos de usuarios del servidor gatilla una alerta de alta prioridad en un panel central en menos de 10 segundos.
 
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.settimeout(3)
-            s.connect((ZABBIX_SERVER, ZABBIX_PORT))
-            s.sendall(packet)
-            respuesta = s.recv(1024)
-            # Muestra en la consola de VS Code si Zabbix procesó el paquete
-            print(f"{obtener_tiempo()} [ZABBIX-LINK] Respuesta del servidor: {respuesta[13:].decode('utf-8')}")
-    except Exception as e:
-        print(f"{obtener_tiempo()} [ZABBIX-ERROR] No se pudo enviar telemetría: {e}")
+---
 
-def obtener_tiempo():
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+## 🛠️ Stack Tecnológico
+* **Plataforma de Observabilidad:** Zabbix Server & Zabbix Agent (v6.4)
+* **Infraestructura y Orquestación:** Docker & Docker Compose
+* **Entorno de Red Virtual:** Docker Bridge Network (Resolución interna por DNS de contenedores)
+* **Sistemas Operativos:** Linux (Contenedores cliente/servidor) / Windows PowerShell (Host)
+* **Automatización y Shell:** Bash Linux
 
-def modulo_fim():
-    print(f"{obtener_tiempo()} [INFO] Sub-modulo inicializado con exito: [Modulo-FIM]")
-    try:
-        time.sleep(1)
-        ultima_modif = os.path.getmtime(HOSTS_PATH)
-        while True:
-            time.sleep(2)
-            actual_modif = os.path.getmtime(HOSTS_PATH)
-            if actual_modif != ultima_modif:
-                msg_alerta = "¡Alerta de Seguridad! El archivo HOSTS fue modificado."
-                print(f"\n{obtener_tiempo()} [ALERTA-FIM] {msg_alerta}")
-                
-                # ENVIAMOS LA ALERTA A TU DASHBOARD EN VIVO
-                enviar_a_zabbix("hids.fim.alert", msg_alerta)
-                
-                ultima_modif = actual_modif
-    except Exception as e:
-        print(f"{obtener_tiempo()} [ERROR-FIM] No se pudo acceder a {HOSTS_PATH}: {e}")
+---
 
-def modulo_procesos():
-    print(f"{obtener_tiempo()} [INFO] Sub-modulo inicializado con exito: [Modulo-Procesos]")
-    procesos_conocidos = set(p.pid for p in psutil.process_iter())
-    while True:
-        time.sleep(3)
-        for proc in psutil.process_iter():
-            try:
-                if proc.pid not in procesos_conocidos:
-                    procesos_conocidos.add(proc.pid)
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
+## 🚀 Arquitectura de la Solución
+El entorno se despliega de manera aislada y portable mediante dos nodos principales comunicados internamente:
+1. **`Zabbix Server / Web Frontend`:** Centro de control, procesamiento de datos y visualización del SOC.
+2. **`servidor-cliente-final`:** Contenedor objetivo que actúa como el servidor de producción auditado, corriendo el servicio nativo de **Zabbix Agent**.
 
-def modulo_red():
-    print(f"{obtener_tiempo()} [INFO] Sub-modulo inicializado con exito: [Modulo-Red]")
-    conexiones_vistas = set()
-    while True:
-        time.sleep(4)
-        try:
-            for conn in psutil.net_connections(kind='inet'):
-                if conn.status == 'ESTABLISHED' and conn.raddr:
-                    ip_remota = f"{conn.raddr.ip}:{conn.raddr.port}"
-                    if ip_remota not in conexiones_vistas:
-                        conexiones_vistas.add(ip_remota)
-        except Exception:
-            continue
+---
 
-if __name__ == "__main__":
-    print(f"{obtener_tiempo()} [INFO] " + "="*60)
-    print(f"{obtener_tiempo()} [INFO]  Desplegando Core Engine HIDS + Zabbix Link...")
-    print(f"{obtener_tiempo()} [INFO] " + "="*60)
+## 🔧 Configuración Técnica e Ingeniería de Alertas
 
-    t1 = threading.Thread(target=modulo_fim, daemon=True)
-    t2 = threading.Thread(target=modulo_procesos, daemon=True)
-    t3 = threading.Thread(target=modulo_red, daemon=True)
+### 1. Recolección de Datos (Item de Auditoría)
+Se configuró una métrica de control pasivo en el host objetivo utilizando la llave criptográfica nativa del agente:
+* **Nombre:** `Monitoreo de Integridad - /etc/passwd`
+* **Key:** `vfs.file.cksum[/etc/passwd]` 
+* **Función:** Realiza un cálculo automatizado del checksum/hash numérico del archivo objetivo.
+* **Intervalo de Muestreo:** `10s` (Optimizado para validación inmediata en laboratorio).
 
-    t1.start()
-    t2.start()
-    t3.start()
+### 2. Lógica del Disparador (Trigger Expresión)
+Para automatizar la respuesta ante incidentes sin intervención humana, se programó un disparador basado en álgebra booleana que evalúa la variación de estados:
+* **Expresión:** `change(/servidor-cliente-final/vfs.file.cksum[/etc/passwd])=1`
+* **Severidad:** **High (Alto)**
+* **Explicación:** La función matemática `change()` compara el hash entrante con el inmediatamente anterior. Si el resultado es diferente de cero, la expresión devuelve verdadero (`1`) y levanta la alerta de forma instantánea.
 
-    print(f"{obtener_tiempo()} [INFO] Estatus del motor: Monitoreo concurrente activo conectado a Zabbix.\n")
+---
 
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        print(f"\n{obtener_tiempo()} [INFO] Apagando el motor de seguridad de forma segura.")
+## 🥷 Simulación de Ataque y Respuesta ante Incidentes (Validación PoC)
+
+Para validar la resiliencia y efectividad de la sonda de seguridad, se ejecutó una simulación de intrusión forzada saltando los privilegios estándar del agente:
+
+1. **Evasión de restricciones de usuario e ingreso como Superusuario (UID 0):**
+   ```bash
+   docker exec -u 0 -it servidor-cliente-final bash
+   
