@@ -82,8 +82,8 @@ JSON
 }
 
 
+<img width="860" height="357" alt="NODE RED" src="https://github.com/user-attachments/assets/05d17340-e304-424f-97fd-ed4b1e7c292d" />
 
-<img width="861" height="360" alt="image" src="https://github.com/user-attachments/assets/31eecf9d-ee4b-4585-96a3-be349765562e" />
 
 
 
