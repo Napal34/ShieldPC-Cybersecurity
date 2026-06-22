@@ -49,6 +49,8 @@ Para validar la resiliencia y efectividad de la sonda de seguridad, se ejecutó 
    docker exec -u 0 -it servidor-cliente-final bash
 
 ----------------------------------------------------------------------------------------------
+<img width="860" height="357" alt="NODE RED" src="https://github.com/user-attachments/assets/05d17340-e304-424f-97fd-ed4b1e7c292d" />
+
 ## 🛡️ Módulo: Orquestación, Filtrado Condicional y Persistencia de Logs (SIEM/Middleware)
 
 Como extensión de las capacidades de monitoreo de **ShieldPC-Cybersecurity**, se implementó un ecosistema contenerizado basado en Docker para la centralización, análisis y filtrado de telemetría de seguridad en tiempo real. Este módulo actúa como un componente *Middleware/SIEM* estratégico para mitigar la fatiga de alertas en la consola de operaciones.
@@ -82,7 +84,6 @@ JSON
 }
 
 
-<img width="860" height="357" alt="NODE RED" src="https://github.com/user-attachments/assets/05d17340-e304-424f-97fd-ed4b1e7c292d" />
 
 
 
