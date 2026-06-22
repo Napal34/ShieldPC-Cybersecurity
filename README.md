@@ -47,4 +47,48 @@ Para validar la resiliencia y efectividad de la sonda de seguridad, se ejecutó 
 1. **Evasión de restricciones de usuario e ingreso como Superusuario (UID 0):**
    ```bash
    docker exec -u 0 -it servidor-cliente-final bash
+
+----------------------------------------------------------------------------------------------
+## 🛡️ Módulo: Orquestación, Filtrado Condicional y Persistencia de Logs (SIEM/Middleware)
+
+Como extensión de las capacidades de monitoreo de **ShieldPC-Cybersecurity**, se implementó un ecosistema contenerizado basado en Docker para la centralización, análisis y filtrado de telemetría de seguridad en tiempo real. Este módulo actúa como un componente *Middleware/SIEM* estratégico para mitigar la fatiga de alertas en la consola de operaciones.
+
+### 🏗️ Arquitectura de la Solución
+El entorno opera de manera integrada sobre una infraestructura basada en microservicios:
+* **`nodered_windows` (Node-RED):** Motor de orquestación y análisis basado en flujos que recibe eventos crudos vía HTTP POST, procesa los payloads e implementa la lógica de enrutamiento.
+* **Zabbix Stack (`zabbix-server`, `zabbix-web`, `zabbix-agent`):** Infraestructura central destinada a la recolección de métricas de salud del sistema, con agentes listos para consumir los registros generados.
+
+### 🔄 Flujo de Trabajo Automatizado
+1. **Ingesta (Ingress):** Un script desarrollado en Python (`emisor_alertas.py`) simula un incidente crítico de seguridad (ej: ataque de fuerza bruta en un *Active Directory*) enviando telemetría de red estructurada en formato JSON hacia el endpoint `[post] /alerta`.
+2. **Filtrado Condicional (Parsing):** El nodo de función lógica evalúa la propiedad `msg.payload.severidad`:
+    * **Gravedad Informativa:** Se desvía directamente a la consola de depuración (`debug 1`) para visualización operativa volátil.
+    * **Gravedad Crítica:** Se intercepta, se aísla de la consola general y se direcciona al sistema de archivos para mitigar el ruido visual.
+3. **Persistencia e Integración con Zabbix:** Los eventos críticos se escriben de manera págada e irreversible en el volumen del contenedor (`/data/alertas_criticas.log`). Esta persistencia inmutable permite que el **Zabbix Agent** configure un elemento de monitoreo (*Item type: log*) para parsear el archivo, detectar la cadena `"Crítica"` y gatillar disparadores (*Triggers*) de alta prioridad en el Dashboard global de Zabbix.
+
+### 💻 Evidencia de Operación y Validación Forense
+Para auditar la persistencia del incidente en el contenedor de infraestructura:
+
+```bash
+docker exec -it nodered_windows cat /data/alertas_criticas.log
+
+
+JSON
+{
+  "origen": "Servidor-Contabilidad",
+  "fecha": "2026-06-22 16:09:13",
+  "servicio": "Active-Directory-Windows",
+  "mensaje": "CRITICAL: Bloqueo de cuenta Administrador. 15 intentos fallidos desde IP externa sospechosa.",
+  "severidad": "Crítica"
+}
+
+
+
+<img width="861" height="360" alt="image" src="https://github.com/user-attachments/assets/31eecf9d-ee4b-4585-96a3-be349765562e" />
+
+
+
+
+
+
+
    
